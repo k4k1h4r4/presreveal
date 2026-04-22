@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Background photo ── */
+#bg {
+  position: fixed; inset: 0;
+  background: url('images/Preslie.jpg') center center / cover no-repeat;
+  opacity: 0;
+  transition: opacity 3s ease;
+  z-index: 0;
+}
+#bg.visible { opacity: 1; }
+
+/* ── Phrase block ── */
+#phrase {
+  position: fixed;
+  top: clamp(28px, 8vh, 60px);
+  left: 0; right: 0;
+  padding: 0 16px;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(40px, 9.5vw, 58px);
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  color: #111111;
+  z-index: 10;
+  transition: color 2.5s ease, text-shadow 2.5s ease;
+}
+
+#phrase.lit {
+  color: #ffffff;
+  text-shadow:
+    0 2px 8px rgba(0,0,0,0.6),
+    0 6px 28px rgba(0,0,0,0.4);
+}
+
+/* Base character — invisible but holds its layout space */
+.char {
+  display: inline;
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
+  transition: opacity 0.3s ease;
+}
+
+/* Fully tapped — solid */
+.char.revealed {
+  opacity: 1;
+}
+
+/* Currently blinking — tappable */
+.char.active {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: slowblink 1.8s ease-in-out infinite;
+  padding: 10px 5px;
+  margin: -10px -5px;
+  position: relative;
+  z-index: 11;
+}
+
+@keyframes slowblink {
+  0%,  45% { opacity: 1;    }
+  50%       { opacity: 0.04; }
+  55%, 100% { opacity: 1;    }
+}
+
+/* ── Intro "L" ── */
+#start-letter {
+  position: fixed;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(80px, 26vw, 140px);
+  color: #111111;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+  z-index: 20;
+  animation: slowblink 1.8s ease-in-out infinite;
+}
+
+#start-letter.gone { display: none; }
+
+</style>
+</head>
+<body>
+
+<div id="bg"></div>
+<div id="phrase"></div>
+<div id="start-letter">P</div>
+
+<script>
+const PHRASE    = "YOU ARE SPECIAL\nI BELIEVE IN YOU";
+const phraseEl  = document.getElementById('phrase');
+const startEl   = document.getElementById('start-letter');
+const bgEl      = document.getElementById('bg');
+
+// ── Build phrase DOM ──────────────────────────────────────
+// Each non-newline character gets its own <span>.
+// Spaces are always visible (invisible whitespace, needed for layout).
+// Letters start at opacity 0 until activated or revealed.
+
+const pool = [];   // tappable char objects: { el }
+
+let lineDiv = document.createElement('div');
+phraseEl.appendChild(lineDiv);
+
+PHRASE.split('').forEach(ch => {
+  if (ch === '\n') {
+    lineDiv = document.createElement('div');
+    phraseEl.appendChild(lineDiv);
+    return;
+  }
+
+  const span = document.createElement('span');
+  span.className = 'char';
+  span.textContent = (ch === ' ') ? '\u00A0' : ch;
+
+  if (ch === ' ') {
+    span.classList.add('revealed');
+  } else {
+    pool.push({ el: span });
+  }
+
+  lineDiv.appendChild(span);
+});
+
+// ── Game state ────────────────────────────────────────────
+let remaining = [...pool];
+let activeItem = null;
+
+// ── Activate a random unrevealed letter ──────────────────
+function activateRandom() {
+  if (remaining.length === 0) {
+    setTimeout(() => {
+      bgEl.classList.add('visible');
+      phraseEl.classList.add('lit');
+    }, 300);
+    return;
+  }
+
+  const idx  = Math.floor(Math.random() * remaining.length);
+  const item = remaining[idx];
+
+  item.el.classList.add('active');
+  activeItem = item;
+
+  function handleTap(e) {
+    e.preventDefault();
+    item.el.removeEventListener('touchend', handleTap);
+    item.el.removeEventListener('click',    handleTap);
+
+    item.el.classList.remove('active');
+    item.el.classList.add('revealed');
+
+    const i = remaining.indexOf(item);
+    if (i > -1) remaining.splice(i, 1);
+
+    activateRandom();
+  }
+
+  item.el.addEventListener('touchend', handleTap, { passive: false });
+  item.el.addEventListener('click',    handleTap);
+}
+
+// ── Intro "L" tap ─────────────────────────────────────────
+function startGame(e) {
+  e.preventDefault();
+  startEl.removeEventListener('touchend', startGame);
+  startEl.removeEventListener('click',    startGame);
+  startEl.classList.add('gone');
+  activateRandom();
+}
+
+startEl.addEventListener('touchend', startGame, { passive: false });
+startEl.addEventListener('click',    startGame);
+</script>
+</body>
+</html>
